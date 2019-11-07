@@ -3,8 +3,8 @@ defmodule Belt.Mixfile do
 
   def project do
     [app: :belt,
-     version: "0.4.2",
-     elixir: "~> 1.4",
+     version: "0.5.0",
+     elixir: "~> 1.9",
      elixirc_paths: elixirc_paths(Mix.env),
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,

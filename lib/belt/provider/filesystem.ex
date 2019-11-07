@@ -69,7 +69,7 @@ defmodule Belt.Provider.Filesystem do
   def store(config, file_source, options) do
     with {:ok, path} <- prepare_store(config, options),
          :ok <- File.cp(file_source, path) do
-      get_info(config, Path.relative_to(path, config.directory), options)
+      get_info(config, path_to_identifier(path, config.directory), options)
     end
   end
 
@@ -79,9 +79,11 @@ defmodule Belt.Provider.Filesystem do
   def store_data(config, iodata, options) do
     with {:ok, path} <- prepare_store(config, options),
          :ok <- File.write(path, iodata) do
-      get_info(config, Path.relative_to(path, config.directory), options)
+      get_info(config, path_to_identifier(path, config.directory), options)
     end
   end
+
+  defp path_to_identifier(path, root_dir), do: Path.relative_to(path, Path.expand(root_dir))
 
   defp prepare_store(config, options) do
     directory = config.directory
@@ -99,7 +101,7 @@ defmodule Belt.Provider.Filesystem do
 
   defp create_target_file(directory, scope, key, options) do
     overwrite = Keyword.get(options, :overwrite) == true
-    max_renames = Keyword.get(options, :max_renames)
+    max_renames = Keyword.get(options, :max_renames, @max_renames)
     create_target_file(directory, scope, key, overwrite, 0, max_renames)
   end
 
@@ -110,8 +112,8 @@ defmodule Belt.Provider.Filesystem do
     open_opts = if overwrite,
       do: [:write],
       else: [:write, :exclusive]
-    with {:ok, path} <- build_target_path(directory, scope, key, renames),
-         :ok <- File.mkdir_p(Path.dirname(path)),
+    path = build_target_path(directory, scope, key, renames)
+    with :ok <- File.mkdir_p(Path.dirname(path)),
          {:ok, device} <- File.open(path, open_opts) do
          File.close(device)
          {:ok, path}
@@ -130,7 +132,7 @@ defmodule Belt.Provider.Filesystem do
   Implementation of the `Belt.Provider.delete/3` callback.
   """
   def delete(config, identifier, _options) do
-    {:ok, path} = build_target_path(config.directory, "", identifier)
+    path = build_target_path(config.directory, "", identifier)
     case File.rm(path) do
       :ok -> :ok
       {:error, :enoent} -> :ok
@@ -174,7 +176,7 @@ defmodule Belt.Provider.Filesystem do
   Implementation of the `Belt.Provider.get_info/3` callback.
   """
   def get_info(config, identifier, options) do
-    {:ok, path} = build_target_path(config.directory, "", identifier)
+    path = build_target_path(config.directory, "", identifier)
     %{size: size, ctime: modified} = File.stat!(path)
     url = case config.base_url do
       :unavailable -> :unavailable
@@ -197,14 +199,10 @@ defmodule Belt.Provider.Filesystem do
   end
 
   defp build_target_path(directory, scope, key, renames \\ 0) do
-    path = [directory, scope, key]
+    [directory, scope, key]
     |> Path.join()
     |> Path.expand()
     |> Helpers.increment_path(renames)
-
-    if (Path.relative_to(path, directory) == path),
-      do: {:error, "invalid scope or filename"},
-      else: {:ok, path}
   end
 
 
