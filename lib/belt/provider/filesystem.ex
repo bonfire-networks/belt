@@ -90,7 +90,7 @@ defmodule Belt.Provider.Filesystem do
     scope = Keyword.get(options, :scope, "")
     key = Keyword.get(options, :key)
     overwrite = Keyword.get(options, :overwrite, :rename)
-    max_renames = if (overwrite === :rename),
+    max_renames = if overwrite == :rename,
       do: @max_renames,
       else: 0
 
@@ -113,10 +113,8 @@ defmodule Belt.Provider.Filesystem do
       do: [:write],
       else: [:write, :exclusive]
     path = build_target_path(directory, scope, key, renames)
-    with :ok <- File.mkdir_p(Path.dirname(path)),
-         {:ok, device} <- File.open(path, open_opts) do
-         File.close(device)
-         {:ok, path}
+    with :ok <- File.mkdir_p(Path.dirname(path)) do
+      {:ok, path}
     else
       {:error, :eexist}
         -> create_target_file(directory, scope, key, overwrite, renames + 1, max_renames)
