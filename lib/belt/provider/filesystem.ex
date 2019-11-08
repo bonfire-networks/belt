@@ -130,12 +130,8 @@ defmodule Belt.Provider.Filesystem do
   Implementation of the `Belt.Provider.delete/3` callback.
   """
   def delete(config, identifier, _options) do
-    path = build_target_path(config.directory, "", identifier)
-    case File.rm(path) do
-      :ok -> :ok
-      {:error, :enoent} -> :ok
-      {:error, reason} -> {:error, reason}
-    end
+    build_target_path(config.directory, "", identifier)
+    |> File.rm()
   end
 
   @doc """
