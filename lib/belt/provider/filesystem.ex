@@ -94,20 +94,20 @@ defmodule Belt.Provider.Filesystem do
       do: @max_renames,
       else: 0
 
-    create_target_file(directory, scope, key,
+    ensure_target_dir(directory, scope, key,
                        overwrite: overwrite,
                        max_renames: max_renames)
   end
 
-  defp create_target_file(directory, scope, key, options) do
+  defp ensure_target_dir(directory, scope, key, options) do
     overwrite = Keyword.get(options, :overwrite) == true
     max_renames = Keyword.get(options, :max_renames, @max_renames)
-    create_target_file(directory, scope, key, overwrite, 0, max_renames)
+    ensure_target_dir(directory, scope, key, overwrite, 0, max_renames)
   end
 
-  defp create_target_file(directory, scope, key, overwrite, renames, max_renames)
+  defp ensure_target_dir(directory, scope, key, overwrite, renames, max_renames)
 
-  defp create_target_file(directory, scope, key, overwrite, renames, max_renames)
+  defp ensure_target_dir(directory, scope, key, overwrite, renames, max_renames)
   when renames <= max_renames do
     open_opts = if overwrite,
       do: [:write],
@@ -117,12 +117,12 @@ defmodule Belt.Provider.Filesystem do
       {:ok, path}
     else
       {:error, :eexist}
-        -> create_target_file(directory, scope, key, overwrite, renames + 1, max_renames)
+        -> ensure_target_dir(directory, scope, key, overwrite, renames + 1, max_renames)
       {:error, _} = error -> error
     end
   end
 
-  defp create_target_file(_, _, _, _, _, _),
+  defp ensure_target_dir(_, _, _, _, _, _),
     do: {:error, "could not create target file"}
 
 
@@ -207,11 +207,19 @@ defmodule Belt.Provider.Filesystem do
   @doc """
   Implementation of the `Belt.Provider.get_url/3` callback.
   """
-  def get_url(%{base_url: base_url}, identifier, _options) when is_binary(base_url) do
-    url = base_url
+  def get_url(%{base_url: base_url} = config, identifier, options) when is_binary(base_url) do
+    scope = Keyword.get(options, :scope, "")
+    path = build_target_path(config.directory, scope, identifier)
+
+    if File.exists?(path) do
+      url = base_url
       |> URI.merge(identifier)
       |> URI.to_string()
-    {:ok, url}
+
+      {:ok, url}
+    else
+      {:error, :enoent}
+    end
   end
 
   def get_url(_, _, _), do: :unavailable
